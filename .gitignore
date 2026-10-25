@@ -1,0 +1,8 @@
+# Jamais versionnés (règles du projet)
+data/
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
