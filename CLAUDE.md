@@ -91,7 +91,8 @@ voir la section 3.2 bis du plan (état des nœuds, propagation signée, visibili
 
 **Règle.** Chaque étape livre un composant dans sa version définitive : code, données, tests,
 documentation et mise à jour automatique. On ne passe à l'étape suivante que lorsque tous ses
-critères de fin sont cochés. Pas d'ébauche à reprendre plus tard. Détail complet : section 10 du plan.
+critères de fin sont cochés. Seule exception : les critères de durée (14 jours sans
+intervention) courent en fond pendant l'étape suivante. Pas d'ébauche à reprendre plus tard. Détail complet : section 10 du plan.
 
 | Étape | Livre | Durée estimée |
 |---|---|---|
@@ -196,17 +197,31 @@ RSSHub, changedetection.io et Crawl4AI ; FinMind et AKShare en usage personnel ;
 santé par collecteur (alerte si une source se tait plus de 15 min) ; versions figées dans
 `requirements.txt`.
 
-Critères de fin :
-- [ ] Précision des liens ≥ 90 % sur 200 liens tirés au hasard, vérifiés à la main
-- [ ] Rappel ≥ 80 % sur 100 relations connues (FinReflectKG + liste de référence)
+Critères de fin (chacun se coche en un temps fini, quel que soit le résultat des modèles) :
+- [ ] Précision des liens ≥ 90 % sur 200 liens tirés au hasard, stratifiés par type de lien et
+      par langue, vérifiés à la main. Un lien est juste si sa source, sa cible, son type, son
+      sens et sa date le sont
+- [ ] Rappel ≥ 80 % sur 100 relations connues, toutes tirées de documents datés (FinReflectKG +
+      liste de référence), jamais de la mémoire d'un LLM
 - [ ] Goulots de référence cartographiés (T-glass, HVLP4, substrats InP, ABF, CoWoS, HBM) :
       producteurs et parts, substituts, clients, historique d'état daté
-- [ ] Chaque produit a au moins un producteur avec une part de marché datée et citée
-- [ ] Chaque nœud a ses noms en anglais, chinois, japonais et coréen
-- [ ] Prédiction des liens futurs (étage C) meilleure que les points de comparaison
-- [ ] Graphe et état reconstructibles à n'importe quelle date, avec un test automatique de
-      non-fuite du futur
-- [ ] Mise à jour automatique : 14 jours sans intervention
+- [ ] Produits des goulots de référence : part de marché datée et citée pour chaque producteur
+      connu. Autres produits : au moins un producteur cité ; part datée et citée quand une
+      source gratuite existe, sinon « part inconnue » avec la liste des sources consultées
+- [ ] Noms en anglais, chinois, japonais et coréen pour chaque produit et matériau ; nom local
+      pour chaque société asiatique ; nom anglais et ticker pour les autres sociétés
+- [ ] Visibilité datée calculée pour tous les liens ; thèmes liés aux goulots de référence, avec
+      membres datés et exposition réelle
+- [ ] Rapport de couverture : pour chaque source, période couverte et trous connus (dépôts
+      officiels depuis 2010, presse depuis 2015 ou 2016)
+- [ ] Étage C évalué contre les points de comparaison (voisins communs, similarité de texte,
+      étage B) sur les liens apparus après la date de coupure. Gardé s'il les bat, sinon on
+      garde le meilleur étage précédent (règle 3.5). Résultat documenté dans les deux cas
+- [ ] Test automatique de non-fuite : pour 20 dates tirées au hasard, le graphe et l'état
+      reconstruits depuis une base tronquée à la date sont identiques à `graphe_a_date()` sur
+      la base complète. Des documents « canaris » datés du futur n'apparaissent jamais
+- [ ] Mise à jour automatique : 14 jours sans intervention. Ces 14 jours courent en fond :
+      l'étape 2 peut démarrer pendant ce temps
 - [ ] Tous les tests passent, documentation à jour
 
 ### Étapes suivantes (résumé, détail dans le plan)
