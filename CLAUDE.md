@@ -51,10 +51,17 @@ Cinq sources d'edge possibles, chacune testée seule à l'étape 2 (test A bis) 
    estimée sur l'historique.
 5. **Fin d'un goulot**, remarquée plus lentement que son début.
 
+Horizon visé (hypothèse de départ, l'étape 2 tranche) : 2 à 5 jours pour la suite du saut,
+3 jours à 2 semaines pour le tri dans un thème, 2 à 4 semaines pour les liens peu visibles,
+les perdants oubliés et la fin d'un goulot. Jamais plus d'un mois : au-delà, on mesure sans
+trader. Les marchés asiatiques tradent pendant la nuit à Paris : un ticket validé dans la
+journée part à la séance suivante.
+
 Conséquences pour le code : chaque lien porte une **visibilité datée** (célèbre, connu des
 spécialistes, caché), calculée sur les co-citations dans la presse publiées avant la date.
 Les **thèmes** (ensembles de sociétés que le marché achète ensemble) ont des membres datés.
-Les tests mesurent le saut (J0) et la dérive (J+1 à J+60) à part.
+Les tests mesurent le saut (J0) et la dérive (J+1 à J+20, J+60 pour information) à part,
+depuis le premier prix réellement accessible.
 
 ## État actuel (pilote terminé, 25 octobre 2026 ; base de l'étape 1)
 
@@ -229,11 +236,12 @@ Critères de fin (chacun se coche en un temps fini, quel que soit le résultat d
 2. **Moteur d'impact** : prix EODHD depuis 2010, événements historiques datés, rendements
    anormaux, test A net de frais par lieu et par sous-période, par classe de visibilité ;
    test A bis sur tous les goulots recensés (y compris ceux sans suite), par rôle et par classe
-   de visibilité, à J0, J+5, J+20 et J+60, saut et dérive séparés, retournement du saut mesuré ;
-   étage D calibré, `impact_attendu(événement, date)`. Verdict pour chacune des cinq sources
-   d'edge, par horizon et par classe de visibilité : feu vert, pivot ou arrêt.
+   de visibilité, à J0, J+1, J+2, J+5, J+10 et J+20 (J+60 pour information), saut et dérive
+   séparés, retournement du saut mesuré ; étage D calibré, `impact_attendu(événement, date)`.
+   Verdict pour chacune des cinq sources d'edge, par horizon et par classe de visibilité :
+   feu vert, pivot ou arrêt, avec l'horizon retenu (entre 2 jours et 4 semaines).
 3. **Décision** : candidats (graphe, rôles dans les goulots, membres du thème), limités aux
-   sources d'edge validées à l'étape 2 ; raisonnement Claude en format imposé, second avis Jev
+   sources d'edge validées à l'étape 2, sortie à l'horizon retenu pour la source ; raisonnement Claude en format imposé, second avis Jev
    ou GLiNER2, contrôle marché (mouvement déjà fait comparé à l'exposition réelle), espérance,
    taille, limites, tickets, papier IBKR et Liquid, rejeu juillet-octobre 2026. Zéro erreur de
    sens sur le générateur de mondes.
