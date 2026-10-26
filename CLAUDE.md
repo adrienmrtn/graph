@@ -232,7 +232,10 @@ derrière la même chaîne d'extraction.
 Règles d'usage : conditions d'utilisation et robots vérifiés site par site, y compris pour
 RSSHub, changedetection.io et Crawl4AI ; FinMind et AKShare en usage personnel ; un contrôle de
 santé par collecteur (alerte si une source se tait plus de 15 min) ; versions figées dans
-`requirements.txt`.
+`requirements.txt`. Sources rapides et gratuites d'abord : dépôts boursiers, communiqués,
+flashs asiatiques, chaînes Telegram publiques (section 4.2 bis du plan). Jamais de
+contournement des protections anti-robots (CAPTCHA, rotation d'adresses IP), ni de collecte
+derrière une connexion.
 
 Critères de fin (chacun se coche en un temps fini, quel que soit le résultat des modèles) :
 - [ ] Précision des liens ≥ 90 % sur 200 liens tirés au hasard, stratifiés par type de lien et
