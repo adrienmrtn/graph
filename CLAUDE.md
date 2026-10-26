@@ -276,7 +276,8 @@ Critères de fin (chacun se coche en un temps fini, quel que soit le résultat d
    sources d'edge validées à l'étape 2, sortie à l'horizon retenu pour la source ; agent d'enquête (une heure au plus, corpus
    daté, note au format imposé, coût mesuré sur 20 news), second avis Jev
    ou GLiNER2, contrôle marché (mouvement déjà fait comparé à l'exposition réelle), espérance,
-   taille, limites, tickets, papier IBKR et Liquid, rejeu juillet-octobre 2026. Zéro erreur de
+   taille, limites, tickets, papier IBKR (un compte : États-Unis, Japon, Taïwan TWSE et
+   TPEx, Corée KRX ; pas de vente à découvert à Taïwan) et Liquid, rejeu juillet-octobre 2026. Zéro erreur de
    sens sur le générateur de mondes.
 4. **Les yeux** : toutes les sources de la section 4.2 (dont presse asiatique, notes d'analystes
    citées par la presse, BIS, Federal Register, MOFCOM, METI, prix des matières), collecteurs
