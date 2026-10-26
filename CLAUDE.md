@@ -13,7 +13,8 @@ L'humain valide chaque bet. Pas d'argent réel avant les critères de la section
    l'information est devenue publique (`filing_date`, `acceptance`, heure de première vue).
    Aucun calcul de test ne doit utiliser une information postérieure à sa date.
 2. **Citation exacte obligatoire.** Un lien extrait par un LLM n'est accepté que si sa citation
-   existe mot pour mot dans le document source (voir `04_extraction_llm.py`). Sinon : « inféré ».
+   existe mot pour mot dans le document source (la base refuse aussi une citation introuvable).
+   Sinon : « inféré ».
 3. **Le LLM raisonne, le code calcule.** Le LLM choisit le sens et le mécanisme, à partir des
    faits fournis par le graphe. Les montants (mouvement attendu, espérance, taille) sont calculés
    par du code ou le modèle appris, jamais par le LLM.
@@ -94,36 +95,28 @@ Partage des rôles : le graphe est la mémoire datée, l'agent enquête, le code
   avec citations vérifiées par le code. Ni montant ni taille. Rejeu sans web, corpus coupé
   à la date de la news. Évalué seulement sur les news postérieures à juin 2026.
 
-## État actuel (pilote terminé, 25 octobre 2026 ; base de l'étape 1)
+## État actuel (26 octobre 2026)
 
-Le code du pilote est encore sur le Mac (`~/Documents/graphe-semis`). Il doit être poussé dans
-ce dépôt (`adrienmrtn/graph`), jamais avec `data/` ni `.env`.
+On repart de zéro sur la nouvelle architecture : le code du pilote n'est pas conservé. Le
+pilote (56 sociétés, dernier rapport de chacune) a servi à apprendre. Ses constats restent :
 
-| Fichier | Rôle |
-|---|---|
-| `config.py` | Univers (codes SIC, tickers pilote et ajoutés), chemins, limites réseau |
-| `sec.py` | Client SEC (limite de débit, reprises, cache JSON) |
-| `textparse.py` | HTML → texte, description d'activité (Item 1 / Item 4), repérage des passages clients/fournisseurs, entités nommées |
-| `01_univers.py` | Univers + liste des rapports annuels (`--pilote`, `--actives`) |
-| `02_rapports.py` | Téléchargement, texte, passages (`--dernier`, `--depuis`) ; reprend où il s'arrête |
-| `02b_reanalyser.py` | Recalcule passages et descriptions depuis les textes déjà téléchargés |
-| `03_apercu.py` | Mentions brutes (qui cite qui) |
-| `04_extraction_llm.py` | Extraction fine par API Anthropic, citation vérifiée (pas encore lancé) |
-| `05_similarite.py` | Couche concurrence (TF-IDF, photos datées au 30 juin + aujourd'hui) |
-| `06_embeddings.py` | Graphe vectoriel v0 (texte + NetMF), voisins, requête news, export `carte.json` |
-| `tests/donnees_a_blanc.*` | 12 sociétés fictives, 4 scénarios, 18 contrôles attendus |
+- Les grands groupes anonymisent leurs clients (« Customer A ») ; les petits fournisseurs les
+  nomment (AAOI → Microsoft ; Credo, Astera Labs → bons de souscription Amazon). Ce sont des
+  liens peu visibles, première source d'edge plausible.
+- Repérer client et fournisseur par mots-clés donne des étiquettes brutes et souvent fausses :
+  l'extraction passe par Claude, avec citation vérifiée.
+- Sans lecture par un LLM, la similarité de texte confond vocabulaire et causalité
+  (« Amazon fait faillite » ramenait Tesla et HP).
+- Les rapports américains citent rarement les maillons profonds (tissu de verre T-glass,
+  feuille de cuivre HVLP, substrats InP). Les plus gros mouvements viennent pourtant de ces
+  goulots : voir la section 3.2 bis du plan.
 
-Pilote : 56 sociétés, dernier rapport de chacune. 2 061 passages, 144 liens de concurrence,
-213 mentions avec citation. Données dans `data/` (non versionnées).
+Fait : schéma Supabase de l'étape 1 (`supabase/migrations/`), règles vérifiées par
+`tests/sql/test_regles.sql`. Suite : environnement Python et `requirements.txt`, collecteur
+TDnet, arbre des produits, univers, collecte de l'historique.
 
-Constats : les grands groupes anonymisent leurs clients (« Customer A ») ; les petits
-fournisseurs les nomment (AAOI → Microsoft ; Credo, Astera Labs → bons de souscription Amazon).
-Ce sont des liens peu visibles, première source d'edge plausible. Les étiquettes
-client/fournisseur de `textparse.classify_context` sont brutes et souvent fausses.
-
-Les rapports américains citent rarement les maillons profonds (tissu de verre T-glass, feuille
-de cuivre HVLP, substrats InP). Les plus gros mouvements viennent pourtant de ces goulots :
-voir la section 3.2 bis du plan (état des nœuds, propagation signée, visibilité, sources d'edge).
+Réseau : les sessions Claude dans le cloud ne joignent une source que si son domaine est
+autorisé dans les réglages de l'environnement (Network access).
 
 ## Feuille de route : 7 étapes, chacune livre un composant fini
 
@@ -145,14 +138,16 @@ intervention) courent en fond pendant l'étape suivante. Pas d'ébauche à repre
 ### Étape 1 (en cours) : le graphe, version finale
 
 Contenu :
-- **Univers** : toutes les sociétés US des codes SIC de `config.SIC_CORE`, radiées comprises
-  depuis 2010 ; clients et voisins (`EXTRA_TICKERS`) ; émetteurs 20-F (TSMC, ASML, UMC, ASE…) ;
+- **Univers** : toutes les sociétés US des codes SIC du secteur (semi-conducteurs, équipements,
+  test, optique, stockage, circuits imprimés, composants), radiées comprises depuis 2010 ;
+  clients et voisins (hyperscalers, serveurs, réseau, logiciels de conception, énergie des
+  datacenters) ; émetteurs 20-F (TSMC, ASML, UMC, ASE…) ;
   Corée via DART ; Japon via EDINET et TDnet ; Taïwan via MOPS (TWSE et TPEx) ; producteurs des
   matériaux critiques (Nittobo, Mitsui Kinzoku, Resonac, Ajinomoto, AXT…). Fabricants chinois
   cotés (feuille de cuivre, stratifiés) : nœuds de signal, pas de trade.
 - **Historique 2010 à aujourd'hui** : tout par `edgartools` pour la SEC (couvre 1994 à
-  aujourd'hui : 10-K, 20-F, 8-K, 13F, XBRL). Identité SEC via `SEC_CONTACT_EMAIL`. Notre
-  `textparse` contrôle le découpage par section et sert de repli. EDGAR-CORPUS abandonné.
+  aujourd'hui : 10-K, 20-F, 8-K, 13F, XBRL). Identité SEC via `SEC_CONTACT_EMAIL`. Nos tests
+  contrôlent le découpage par section. EDGAR-CORPUS abandonné.
   Presse : Common Crawl News (news-please ou Fundus) et fichiers bruts GDELT.
 - **Ontologie complète** (sections 3.2 et 3.2 bis du plan) : sociétés, produits, matériaux,
   usines, pays, règles, et tous les types de liens, signés selon le rôle dans un goulot, avec
@@ -165,7 +160,7 @@ Contenu :
   propagés séparément.
 - **Visibilité et thèmes** : visibilité datée de chaque lien (célèbre, spécialistes, caché),
   calculée sur les co-citations dans la presse ; thèmes et leurs membres, datés.
-- **Extraction** par Claude (`04`) : citation vérifiée mot pour mot, tableaux gardés entiers,
+- **Extraction** par Claude : citation vérifiée mot pour mot, tableaux gardés entiers,
   réflexion sur les passages ambigus, liens lus des deux côtés, clients anonymes conservés
   puis résolus quand c'est possible.
 - **Couches complémentaires** : concurrence (texte), co-détention (13F), brevets.
@@ -297,13 +292,3 @@ LinkedIn (pas d'API ouverte, collecte interdite), notes d'analystes en direct (c
 presse qui les cite), trading d'actions chinoises (signal seulement), élève local d'extraction
 (seulement si la facture d'API l'exige), deuxième secteur avant l'étape 7.
 
-## Commandes utiles
-
-```bash
-export SEC_CONTACT_EMAIL='...'
-python3 01_univers.py --actives
-python3 02_rapports.py --depuis 2010
-python3 02b_reanalyser.py
-python3 03_apercu.py && python3 05_similarite.py && python3 06_embeddings.py
-python3 06_embeddings.py --news "Amazon files for bankruptcy"
-```
