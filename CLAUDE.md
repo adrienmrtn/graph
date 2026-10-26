@@ -70,12 +70,23 @@ Partage des rôles : le graphe est la mémoire datée, l'agent enquête, le code
 - **Supabase stocke tout** : Postgres (schéma de l'annexe A), pgvector, PGroonga (plein texte
   chinois, japonais, coréen), Storage (textes compressés des dépôts, jamais le HTML), Auth.
   Pas de base de graphe dédiée : Postgres et des requêtes récursives suffisent.
+- **Projet** « Graphs » (`lyanycbhuhxmsptwxnap`, eu-west-1). Le schéma vit dans
+  `supabase/migrations/` : toute modification passe par une nouvelle migration, jamais à la
+  main. `tests/sql/test_regles.sql` vérifie les règles portées par la base (résultat attendu :
+  une erreur « TESTS OK », qui annule les données de test).
+- **La base refuse elle-même** : un lien ou une observation « cité » dont la citation n'est pas
+  mot pour mot dans son passage ; un fait daté avant la publication de son document ; un
+  extrait de presse de plus de 600 caractères. `publie_le` d'un passage est recopié du document
+  par un déclencheur. Une fin de lien ne compte qu'à partir de `fin_connue_le`.
+- **Thèmes et clients anonymes sont des nœuds** (`type` = `theme`, `anonyme`). Appartenance à un
+  thème : lien `MEMBRE_DE` (poids = exposition réelle). Résolution d'un « Customer A » : lien
+  `RESOLU_EN`. Chacun daté et cité comme tout lien.
 - **Accès** : fonctions Postgres datées appelées en RPC (`graphe_a_date()`, `voisins()`,
   `proches()`, `etat()`, `goulots()`, `visibilite()`, `theme()`, `recherche()`). Aucune ne
   renvoie une information publiée après la date demandée.
-- **Sécurité** : RLS sur toutes les tables. L'app web lit avec le compte connecté. L'écriture
-  passe par le serveur avec la clé de service, qui n'apparaît jamais dans l'app web ni dans
-  le dépôt.
+- **Sécurité** : RLS sur toutes les tables. L'app web lit avec le compte connecté, seulement si
+  ce compte figure dans `public.acces`. L'écriture passe par le serveur avec la clé de service,
+  qui n'apparaît jamais dans l'app web ni dans le dépôt.
 - **App web privée en ligne dès l'étape 1** : graphe à une date, fiche d'un nœud avec
   citations, historique d'état, goulots, recherche datée. Tickets et enquêtes ensuite.
 - **Agent d'enquête** (étape 3) : pour chaque news routée, une heure au plus, outils datés
