@@ -63,6 +63,26 @@ Les **thèmes** (ensembles de sociétés que le marché achète ensemble) ont de
 Les tests mesurent le saut (J0) et la dérive (J+1 à J+20, J+60 pour information) à part,
 depuis le premier prix réellement accessible.
 
+## Architecture : Supabase, app web, agent d'enquête (sections 3.8 et 5.1 bis du plan)
+
+Partage des rôles : le graphe est la mémoire datée, l'agent enquête, le code chiffre.
+
+- **Supabase stocke tout** : Postgres (schéma de l'annexe A), pgvector, PGroonga (plein texte
+  chinois, japonais, coréen), Storage (textes compressés des dépôts, jamais le HTML), Auth.
+  Pas de base de graphe dédiée : Postgres et des requêtes récursives suffisent.
+- **Accès** : fonctions Postgres datées appelées en RPC (`graphe_a_date()`, `voisins()`,
+  `proches()`, `etat()`, `goulots()`, `visibilite()`, `theme()`, `recherche()`). Aucune ne
+  renvoie une information publiée après la date demandée.
+- **Sécurité** : RLS sur toutes les tables. L'app web lit avec le compte connecté. L'écriture
+  passe par le serveur avec la clé de service, qui n'apparaît jamais dans l'app web ni dans
+  le dépôt.
+- **App web privée en ligne dès l'étape 1** : graphe à une date, fiche d'un nœud avec
+  citations, historique d'état, goulots, recherche datée. Tickets et enquêtes ensuite.
+- **Agent d'enquête** (étape 3) : pour chaque news routée, une heure au plus, outils datés
+  (`recherche()`, lecture d'une section, `etat()`, `voisins()`, prix), note au format imposé
+  avec citations vérifiées par le code. Ni montant ni taille. Rejeu sans web, corpus coupé
+  à la date de la news. Évalué seulement sur les news postérieures à juin 2026.
+
 ## État actuel (pilote terminé, 25 octobre 2026 ; base de l'étape 1)
 
 Le code du pilote est encore sur le Mac (`~/Documents/graphe-semis`). Il doit être poussé dans
@@ -103,7 +123,7 @@ intervention) courent en fond pendant l'étape suivante. Pas d'ébauche à repre
 
 | Étape | Livre | Durée estimée |
 |---|---|---|
-| 1. Le graphe | Couche 1 complète (liens, état des goulots, visibilité, vecteurs), hors prédiction d'impact | 6 à 8 semaines |
+| 1. Le graphe | Couche 1 complète (liens, état des goulots, visibilité, recherche datée), dans Supabase, avec l'explorateur en ligne | 6 à 8 semaines |
 | 2. Le moteur d'impact | Prix, événements historiques, tests A et A bis, étage D | 3 à 4 semaines |
 | 3. La décision | Couche 3 complète, exécution en papier | 3 semaines |
 | 4. Les yeux | Couche 2 complète, en direct | 3 semaines |
@@ -139,13 +159,17 @@ Contenu :
   puis résolus quand c'est possible.
 - **Couches complémentaires** : concurrence (texte), co-détention (13F), brevets.
 - **Résolution des entités** : Splink, alias anglais, chinois, japonais, coréens.
-- **Base** Supabase (Postgres + pgvector) selon l'annexe A, tout daté.
-- **Vecteurs appris** : étages A, B et C, recalculés par photos trimestrielles datées.
+- **Base** Supabase (Postgres, pgvector, PGroonga, Storage, Auth) selon l'annexe A et la
+  section 3.8 du plan, tout daté.
+- **Recherche datée** : plein texte en 4 langues et vecteurs, qui ne renvoie jamais un document
+  publié après la date demandée. Outil principal de l'agent d'enquête.
+- **Vecteurs** : étages A et B, recalculés par photos trimestrielles datées. L'étage C sort de
+  l'étape 1 (optionnel, après l'étape 2).
 - **Mise à jour automatique** : nouveaux dépôts toutes les 10 min (EDGAR, DART, EDINET, TDnet,
-  MOPS), extraction la nuit, réentraînement hebdomadaire.
+  MOPS), extraction et indexation la nuit, vecteurs recalculés chaque semaine.
 - **Accès pour les autres couches** : `voisins()`, `proches()`, `graphe_a_date()`, `etat()`,
-  `goulots()`, `visibilite()`, `theme()`.
-- **Explorateur** : la carte interactive branchée sur la base.
+  `goulots()`, `visibilite()`, `theme()`, `recherche()`, en fonctions Postgres (RPC).
+- **Explorateur** : app web privée en ligne, branchée sur Supabase, accès par connexion.
 - **Tests** : `pytest` unitaires, banc à blanc, générateur de mondes (retrouver des liens cachés).
 
 Ordre de construction à l'intérieur de l'étape (rien n'est déclaré fini avant les critères) :
@@ -155,7 +179,7 @@ de base ; arbre des produits et noms en 4 langues (ils filtrent toute la collect
 collecte de l'historique (SEC par edgartools, DART, EDINET, MOPS, cninfo, régulateurs) ; coût
 d'extraction mesuré sur 1 000 articles ; archives de presse ; extraction des liens et
 observations ; résolution ; état des nœuds ; visibilité et thèmes ; couches complémentaires ;
-vecteurs ; mise à jour automatique ; accès ; explorateur ; recette.
+recherche datée et vecteurs ; mise à jour automatique ; accès ; app web en ligne ; recette.
 
 Spécification produits, sources et extraction (détail : section 3.2 ter du plan) :
 - **Arbre** : du serveur IA aux matériaux, 5 à 6 niveaux, 200 à 300 produits. Chaque produit a une
@@ -221,9 +245,11 @@ Critères de fin (chacun se coche en un temps fini, quel que soit le résultat d
       membres datés et exposition réelle
 - [ ] Rapport de couverture : pour chaque source, période couverte et trous connus (dépôts
       officiels depuis 2010, presse depuis 2015 ou 2016)
-- [ ] Étage C évalué contre les points de comparaison (voisins communs, similarité de texte,
-      étage B) sur les liens apparus après la date de coupure. Gardé s'il les bat, sinon on
-      garde le meilleur étage précédent (règle 3.5). Résultat documenté dans les deux cas
+- [ ] Recherche datée : sur 50 requêtes de test à des dates variées, aucun document postérieur
+      à la date demandée ; le passage attendu figure dans les 10 premiers résultats pour au
+      moins 80 % des requêtes
+- [ ] App web en ligne : l'explorateur s'ouvre après connexion ; sans connexion, aucune donnée
+      n'est lisible (test des règles RLS)
 - [ ] Test automatique de non-fuite : pour 20 dates tirées au hasard, le graphe et l'état
       reconstruits depuis une base tronquée à la date sont identiques à `graphe_a_date()` sur
       la base complète. Des documents « canaris » datés du futur n'apparaissent jamais
@@ -241,7 +267,8 @@ Critères de fin (chacun se coche en un temps fini, quel que soit le résultat d
    Verdict pour chacune des cinq sources d'edge, par horizon et par classe de visibilité :
    feu vert, pivot ou arrêt, avec l'horizon retenu (entre 2 jours et 4 semaines).
 3. **Décision** : candidats (graphe, rôles dans les goulots, membres du thème), limités aux
-   sources d'edge validées à l'étape 2, sortie à l'horizon retenu pour la source ; raisonnement Claude en format imposé, second avis Jev
+   sources d'edge validées à l'étape 2, sortie à l'horizon retenu pour la source ; agent d'enquête (une heure au plus, corpus
+   daté, note au format imposé, coût mesuré sur 20 news), second avis Jev
    ou GLiNER2, contrôle marché (mouvement déjà fait comparé à l'exposition réelle), espérance,
    taille, limites, tickets, papier IBKR et Liquid, rejeu juillet-octobre 2026. Zéro erreur de
    sens sur le générateur de mondes.
@@ -250,7 +277,8 @@ Critères de fin (chacun se coche en un temps fini, quel que soit le résultat d
    bâtis sur les briques ci-dessus, observations d'état, dédoublonnage, routage, banc 6.4 tranché.
    Latence médiane < 60 s, rappel ≥ 95 % sur les 8-K, 14 jours sans trou.
 5. **Exploitation** : VM européenne + Mac, bot Telegram, app web privée, interrupteur d'arrêt,
-   sauvegardes. 14 jours seul, ticket sur le téléphone < 3 min après la news.
+   sauvegardes. 14 jours seul, ticket sur le téléphone moins de 90 min après la news, avant
+   la séance suivante du titre visé.
 6. et 7. Papier 8 semaines, puis argent réel en petite taille.
 
 Hors périmètre assumé : transcripts payants, fils Bloomberg ou Reuters, réseaux sociaux dont
